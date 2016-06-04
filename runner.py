@@ -4,6 +4,7 @@ import datetime
 import pandas
 import matplotlib.pyplot as plt
 import re
+import sys
 
 from algorithms import (mean_stddev, median_deviation)
 
@@ -12,6 +13,7 @@ class Runner:
 
     def __init__(self, filename):
         self.filename = filename
+        self.path = "data/" + filename
         self.time_series = []
         self.read_file()
         self.anomalies = []
@@ -21,7 +23,7 @@ class Runner:
         self.results_true = []
 
     def read_file(self):
-        with open(self.filename, 'rb') as csv_file:
+        with open(self.path, 'rb') as csv_file:
             reader = csv.reader(csv_file)
             reader.next()  # skip line 'timestamp' => 'value'
             self.__create_time_series(reader)
@@ -82,6 +84,8 @@ def set_param_for_file(filename):
         param = [2.5, 6]
     elif re.match('exchange-\d.*\.csv', filename):
         param = [2.5, 1.5]
+    elif re.match('Twitter.*\.csv', filename):
+        param = [3, 1]
     else:
         param = [3, 6]
     return param
@@ -95,7 +99,8 @@ def create_fusion_results():
                 fusion_results[i] = runners[j+1].results[i]
     return fusion_results
 
-def do_the_staff(i, plot_results=0):
+
+def do_the_staff(i, plot_results):
     runners.append(Runner(filename))
     runners[i].run(i, set_param_for_file(filename)[i])
     runners[i].update_results()
@@ -109,11 +114,24 @@ if __name__ == '__main__':
     filename = 'ec2_cpu_utilization_5f5533.csv'
     filename = 'art_daily_nojump.csv'
     filename = 'exchange-3_cpc_results.csv'
+
+    try:
+        if sys.argv[1]:
+            filename = sys.argv[1]
+    except:
+        print "default filename chosen"
+
+    try:
+        if sys.argv[2]:
+            plot_results = sys.argv[1]
+    except:
+        plot_results = 0
+
     runner = Runner(filename)
     runners = []
 
     for i in xrange(len(runner.algorithms)):
-        do_the_staff(i)
+        do_the_staff(i, plot_results)
         print "number of anomalies: " + str(len(runners[i].anomalies))
         print "length of input data: " + str(len(runners[i].time_series))
 

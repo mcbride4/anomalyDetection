@@ -11,7 +11,7 @@ def median_deviation(value, series, param):
     median = series.median()
     demedianed = np.abs(value - median)
 
-    if demedianed == 0:
+    if demedianed == 0 or value == 0:
         return False
 
     test_statistic = value / demedianed
