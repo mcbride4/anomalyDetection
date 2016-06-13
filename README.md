@@ -2,9 +2,13 @@
 
 usage:
 
+to choose default filename:
+python runner.py
+
+to choose other file:
 python runner.py filename
 
-or to plot more results:
+and to plot more results:
 
 python runner.py filename 1  
 
