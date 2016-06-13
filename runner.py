@@ -2,11 +2,13 @@ import csv
 import time
 import datetime
 import pandas
+import numpy as np
 import matplotlib.pyplot as plt
 import re
 import sys
 
-from algorithms import (mean_stddev, median_deviation)
+
+from algorithms import (mean_stddev, median_deviation, trend_statistic, calculate_trend, anomaly_trend)
 
 
 class Runner:
@@ -18,9 +20,13 @@ class Runner:
         self.read_file()
         self.anomalies = []
         self.results = []
+        self.result_t = []
+        self.result_t_reduced = []
         self.series = self.__set_series()
         self.algorithms = [mean_stddev, median_deviation]
+        #self.trends = [trend_statistic]
         self.results_true = []
+        self.daily_trends = []
 
     def read_file(self):
         with open(self.path, 'rb') as csv_file:
@@ -43,6 +49,36 @@ class Runner:
             # print "anomaly fonund! value: {0}, index: {1}".format(value, index)
         return check
 
+    #algorithm that runs a trend statistics for data and searches for anomalies
+    def run_trend_algorithm(self):
+        self.result_t = trend_statistic(self.series, self.time_series)
+        for i in xrange(len(self.result_t)):
+            if ~np.isnan(self.result_t[i]): #reducing the result data to values that are numbers
+                self.result_t_reduced.append(self.result_t[i])
+
+    def calculate_daily_trend(self, param):
+        # 1 value for each 5 min = > 12 values/hour = > 12*24/day
+        day_length = 12*24
+        series_length = len(self.time_series)
+        days = series_length / day_length
+        print "Calculating trend for {0} days in {1} series long. each day {2} long".format(days, series_length, day_length)
+        for d in xrange(days):
+            print "day: " + str(d+1)
+            self.daily_trends.append(calculate_trend(self.series.values[d:d+day_length]))
+        print "daily trends: "
+        print [x for x,i in self.daily_trends]
+        results = anomaly_trend([x for x,i in self.daily_trends], param)
+        tmp = [0 for i in xrange(len(self.daily_trends))]
+        for i in results:
+            tmp[i] = self.daily_trends[i][0]
+
+        values_to_plot = []
+        for d in xrange(days):
+            values_to_plot.append(self.daily_trends[d][0])
+        plt.plot(values_to_plot, 'ro', tmp, 'b^')
+        plt.show()
+
+
     def add_to_anomalies(self, index):
         self.anomalies.append(self.time_series[index][1])
 
@@ -59,8 +95,10 @@ class Runner:
                 self.results[i] = self.series[i]
 
     def plot_with_anomalies(self):
+
         plt.plot(self.series, 'ro', self.results, 'b^')
         plt.show()
+
 
     def add_anomalies_to_results(self):
         for i in xrange(len(self.results)):
@@ -97,6 +135,9 @@ def create_fusion_results():
         for i in xrange(len(runners[j+1].results)):
             if runners[j+1].results[i]:
                 fusion_results[i] = runners[j+1].results[i]
+    for i in xrange(len(runner.result_t)): #fusion of the trend algorithm results, which runs independently from others
+        if ~np.isnan(runner.result_t[i]):
+            fusion_results[i] = runner.result_t[i]
     return fusion_results
 
 
@@ -108,18 +149,18 @@ def do_the_staff(i, plot_results):
         runners[i].plot_with_anomalies()
     runners[i].add_anomalies_to_results()
 
-
 if __name__ == '__main__':
 
     filename = 'ec2_cpu_utilization_5f5533.csv'
-    filename = 'art_daily_nojump.csv'
-    filename = 'exchange-3_cpc_results.csv'
+    # filename = 'art_daily_nojump.csv'
+    # filename = 'exchange-3_cpc_results.csv'
 
     try:
         if sys.argv[1]:
             filename = sys.argv[1]
     except:
         print "default filename chosen"
+
 
     try:
         if sys.argv[2]:
@@ -135,7 +176,16 @@ if __name__ == '__main__':
         print "number of anomalies: " + str(len(runners[i].anomalies))
         print "length of input data: " + str(len(runners[i].time_series))
 
+    runner.run_trend_algorithm()
+
+    print "trend algorithm"
+    print "number of anomalies: " + str(len(runner.result_t_reduced))
+    print "length of input data: " + str(len(runner.time_series))
+
     fusion = create_fusion_results()
     fusion_anomalies = [x for x in fusion if x]
     print "total number of anomalies: " + str(len(fusion_anomalies))
 
+
+    print "calculate daily trends: "
+    runner.calculate_daily_trend(2)
